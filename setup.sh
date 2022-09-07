@@ -21,7 +21,7 @@ echo -ne "
 
 if [ $(getent group sudo) ]; then
     USER_GROUP=sudo
-elif if [ $(getent group wheel) ]; then
+elif [ $(getent group wheel) ]; then
     USER_GROUP=wheel
 else
     echo "Cannot find 'wheel' or 'sudo' group, aborting!"
@@ -33,10 +33,10 @@ if [ $(whoami) = "root"  ]; then
     echo "You want to add $USERNAME to the $USER_GROUP group? "
     read RESPONSE
     if [[ $RESPONSE == [Yy]* ]]; then
-        useradd -m -G $USER_GROUP -s /bin/bash $USERNAME 
+        useradd -m -G $USER_GROUP -s /bin/bash $USERNAME
         echo "$USERNAME created, home directory created, added to $USER_GROUP group and default shell set to /bin/bash"
     elif [[$RESPONSE == == [Nn]* ]]; then
-        useradd -m -s /bin/bash $USERNAME 
+        useradd -m -s /bin/bash $USERNAME
         echo "$USERNAME created, home directory created and default shell set to /bin/bash"
     fi
 
@@ -57,16 +57,16 @@ UNAME=$(uname | tr "[:upper:]" "[:lower:]")
 # If Linux, try to determine specific distribution
 if [ "$UNAME" == "linux" ]; then
     # If available, use LSB to identify distribution
-    RAW_DISTRO=$(lsb_release -d | awk -F"\t" '{print $2}')
-fi
-if [ "$RAW_DISTRO" == Arch*]; then
-    echo "Running $RAW_DISTRO"
-    pacman -Syy
-    pacman -Syu --noconfirm
-    pacman -S htop vim nano wget curl git ncdu zsh --noconfirm
-else
-    echo "Can't detect current distro!"
-    exit 1
+    RAW_DISTRO=$(awk -F= '/^NAME/{print $2}' /etc/os-release)
+    if [[ $RAW_DISTRO==Arch* ]]; then
+        echo "Running $RAW_DISTRO"
+        pacman -Syy
+        pacman -Syu --noconfirm
+        pacman -S htop vim nano wget curl git ncdu zsh --noconfirm
+    else
+        echo "Can't detect current distro!"
+        exit 1
+    fi
 fi
 
 echo -ne "
