@@ -35,7 +35,7 @@ if [ $(whoami) = "root"  ]; then
     if [[ $RESPONSE == [Yy]* ]]; then
         useradd -m -G $USER_GROUP -s /bin/bash $USERNAME
         echo "$USERNAME created, home directory created, added to $USER_GROUP group and default shell set to /bin/bash"
-    elif [[$RESPONSE == == [Nn]* ]]; then
+    else
         useradd -m -s /bin/bash $USERNAME
         echo "$USERNAME created, home directory created and default shell set to /bin/bash"
     fi
