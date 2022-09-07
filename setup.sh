@@ -44,6 +44,30 @@ if [ $(whoami) = "root"  ]; then
     echo "Setting up password for $USERNAME"
     passwd $USERNAME
 fi
+clear
+
+echo -ne "
+-------------------------------------------------------------------------
+                Updating and installing necessary packages
+-------------------------------------------------------------------------
+"
+
+# Determine OS platform
+UNAME=$(uname | tr "[:upper:]" "[:lower:]")
+# If Linux, try to determine specific distribution
+if [ "$UNAME" == "linux" ]; then
+    # If available, use LSB to identify distribution
+    RAW_DISTRO=$(lsb_release -d | awk -F"\t" '{print $2}')
+fi
+if [ "$RAW_DISTRO" == Arch*]; then
+    echo "Running $RAW_DISTRO"
+    pacman -Syy
+    pacman -Syu --noconfirm
+    pacman -S htop vim nano wget curl git ncdu zsh --noconfirm
+else
+    echo "Can't detect current distro!"
+    exit 1
+fi
 
 echo -ne "
 -------------------------------------------------------------------------
