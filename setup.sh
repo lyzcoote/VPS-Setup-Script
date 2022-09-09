@@ -120,6 +120,7 @@ if [ $(whoami) = "root"  ]; then
     echo "Insert the username: "
     read USERNAME
     echo "You want to add $USERNAME to the $USER_GROUP group? "
+	echo "(Y/n): "
     read RESPONSE
     if [[ $RESPONSE == [Yy]* ]]; then
         useradd -m -G $USER_GROUP -s /bin/bash $USERNAME
@@ -165,6 +166,46 @@ if [ "$UNAME" == "linux" ]; then
         exit 1
     fi
 fi
+
+
+clear
+
+echo -ne "
+-------------------------------------------------------------------------
+                Installing additional QOF packages
+-------------------------------------------------------------------------
+"
+## Additional packages for Debian/Ubuntu
+if [[ $OS =~ (debian|ubuntu) ]]; then
+	#echo $OS
+	#echo $VERSION_CODENAME
+	#echo $VERSION_ID
+	echo "Would you like to install Nala? (Nice front-end for apt)"
+	echo "(Y/n)? "
+	read RESPONSE
+    if [[ $RESPONSE == [Yy]* ]]; then
+		echo "deb [arch=amd64,arm64,armhf] http://deb.volian.org/volian/ scar main" | tee /etc/apt/sources.list.d/volian-archive-scar-unstable.list
+		wget -qO - https://deb.volian.org/volian/scar.key | tee /etc/apt/trusted.gpg.d/volian-archive-scar-unstable.gpg > /dev/null
+		if [[ $OS =~ (debian) ]] && [[ $VERSION_CODENAME = "bullseye" ]]; then
+			apt update
+			apt install nala-legacy -y
+		elif [[ $OS =~ (debian) ]] && [[ $VERSION_CODENAME =~ (testing|bookworm|sid) ]]; then
+			apt update
+			apt install nala -y
+		elif [[ $OS =~ (ubuntu) ]] && [[ $VERSION_ID = "22.04" ]]; then
+			apt update
+			apt install nala -y
+		elif [[ $OS =~ (ubuntu) ]] && [[ $VERSION_ID =~ (21.04|20.04) ]]; then
+			apt update
+			apt install nala-legacy -y
+		else
+			echo "Cannot find a proper canditate OS for Nala or Nala-legacy :/"
+		fi
+	else
+		echo "Not installing Nala/Nala-Legacy."
+	fi
+fi
+
 
 echo -ne "
 -------------------------------------------------------------------------
