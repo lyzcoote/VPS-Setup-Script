@@ -88,26 +88,16 @@ function checkOS() {
 #                                                                              #
 ################################################################################
 
+# Bruh, variables don't iniziate by itself
 checkOS
 
-echo -ne "
-░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
-░   ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   ░░░░░░░░░░░░░░░░░░░░░░░░░░░░   ░░░░░░░░░░░░░
-▒   ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒   ▒▒▒   ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒   ▒▒▒▒▒▒▒▒▒▒▒▒▒
-▒   ▒▒▒▒▒▒▒▒   ▒▒▒   ▒     ▒   ▒▒▒▒▒▒▒   ▒▒▒▒▒▒▒▒▒▒▒   ▒▒▒▒▒▒▒▒   ▒▒▒▒▒    ▒  ▒▒▒▒   ▒▒▒▒
-▓   ▓▓▓▓▓▓▓▓▓   ▓   ▓▓▓▓▓▓▓   ▓▓▓▓▓▓▓▓   ▓▓▓▓▓▓▓▓▓   ▓▓   ▓▓▓   ▓▓   ▓▓▓▓   ▓▓▓▓  ▓▓▓   ▓
-▓   ▓▓▓▓▓▓▓▓▓▓▓    ▓▓▓▓▓▓   ▓▓▓▓▓▓▓▓▓▓   ▓▓▓▓▓▓▓▓   ▓▓▓▓   ▓   ▓▓▓▓   ▓▓▓   ▓▓▓         ▓
-▓   ▓▓▓▓▓▓▓▓▓▓▓▓   ▓▓▓▓▓   ▓▓▓▓▓▓▓▓▓▓▓▓   ▓▓▓   ▓▓   ▓▓   ▓▓▓   ▓▓   ▓▓▓▓   ▓ ▓  ▓▓▓▓▓▓▓▓
-█          ████   ████         ██████████     ██████   ████████   ████████   ████     ███
-██████████████   ████████████████████████████████████████████████████████████████████████
-"
 
 echo -ne "
 -------------------------------------------------------------------------
-                    Adding User
+                    			Adding User
 -------------------------------------------------------------------------
 "
-
+# Checking if there's a sudo or wheel group
 if [ $(getent group sudo) ]; then
     USER_GROUP=sudo
 elif [ $(getent group wheel) ]; then
@@ -134,6 +124,7 @@ if [ $(whoami) = "root"  ]; then
     echo "Setting up password for $USERNAME"
     passwd $USERNAME
 fi
+
 clear
 
 echo -ne "
@@ -146,7 +137,6 @@ echo -ne "
 UNAME=$(uname | tr "[:upper:]" "[:lower:]")
 # If Linux, try to determine specific distribution
 if [ "$UNAME" == "linux" ]; then
-    # If available, use LSB to identify distribution
     if [[ $OS =~ (arch) ]]; then
         pacman -Syy
         pacman -Syu --noconfirm
@@ -165,6 +155,9 @@ if [ "$UNAME" == "linux" ]; then
         echo "Can't detect current distro!"
         exit 1
     fi
+else
+	echo "This script only supports Linux based OSes :/"
+	exit 0
 fi
 
 
@@ -177,9 +170,6 @@ echo -ne "
 "
 ## Additional packages for Debian/Ubuntu
 if [[ $OS =~ (debian|ubuntu) ]]; then
-	#echo $OS
-	#echo $VERSION_CODENAME
-	#echo $VERSION_ID
 	echo "Would you like to install Nala? (Nice front-end for apt)"
 	echo "(Y/n)? "
 	read RESPONSE
