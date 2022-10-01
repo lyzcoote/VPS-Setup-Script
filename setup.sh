@@ -40,44 +40,8 @@ function checkOS() {
 				fi
 			fi
 		fi
-	elif [[ -e /etc/system-release ]]; then
-		source /etc/os-release
-		if [[ $ID == "fedora" || $ID_LIKE == "fedora" ]]; then
-			OS="fedora"
-		fi
-		if [[ $ID == "centos" || $ID == "rocky" || $ID == "almalinux" ]]; then
-			OS="centos"
-			if [[ ! $VERSION_ID =~ (7|8|9) ]]; then
-				echo "⚠️ Your version of CentOS is not supported."
-				echo ""
-				echo "The script only support CentOS 7 and CentOS 8."
-				echo ""
-				exit 1
-			fi
-		fi
-		if [[ $ID == "ol" ]]; then
-			OS="oracle"
-			if [[ ! $VERSION_ID =~ (8) ]]; then
-				echo "Your version of Oracle Linux is not supported."
-				echo ""
-				echo "The script only support Oracle Linux 8."
-				exit 1
-			fi
-		fi
-		if [[ $ID == "amzn" ]]; then
-			OS="amzn"
-			if [[ $VERSION_ID != "2" ]]; then
-				echo "⚠️ Your version of Amazon Linux is not supported."
-				echo ""
-				echo "The script only support Amazon Linux 2."
-				echo ""
-				exit 1
-			fi
-		fi
-	elif [[ -e /etc/arch-release ]]; then
-		OS=arch
 	else
-		echo "Looks like you aren't running this installer on a Debian, Ubuntu, Fedora, CentOS, Amazon Linux 2, Oracle Linux 8 or Arch Linux system"
+		echo "Looks like you aren't running this installer on a Debian or Ubuntu server"
 		exit 1
 	fi
 }
@@ -90,6 +54,12 @@ function checkOS() {
 
 # Bruh, variables don't iniziate by itself
 checkOS
+
+# Checking if the user running the script is root
+if [ "$EUID" -ne 0 ]
+  then echo "Please run this script as root"
+  exit
+fi
 
 
 echo -ne "
@@ -107,22 +77,27 @@ else
     exit 1
 fi
 if [ $(whoami) = "root"  ]; then
-    echo "Insert the username: "
-    read USERNAME
-    echo "You want to add $USERNAME to the $USER_GROUP group? "
-	echo "(Y/n): "
-    read RESPONSE
+	echo "Would you like to add a new username?"
+	echo "(Y/n)? "
+	read RESPONSE
     if [[ $RESPONSE == [Yy]* ]]; then
-        useradd -m -G $USER_GROUP -s /bin/bash $USERNAME
-        echo "$USERNAME created, home directory created, added to $USER_GROUP group and default shell set to /bin/bash"
-    else
-        useradd -m -s /bin/bash $USERNAME
-        echo "$USERNAME created, home directory created and default shell set to /bin/bash"
-    fi
-
-# use chpasswd to enter $USERNAME:$password
-    echo "Setting up password for $USERNAME"
-    passwd $USERNAME
+	    echo "Insert the username: "
+	    read USERNAME
+	    echo "You want to add $USERNAME to the $USER_GROUP group? "
+		echo "(Y/n): "
+	    read RESPONSE
+	    if [[ $RESPONSE == [Yy]* ]]; then
+	        useradd -m -G $USER_GROUP -s /bin/bash $USERNAME
+	        echo "$USERNAME created, home directory created, added to $USER_GROUP group and default shell set to /bin/bash"
+	    else
+	        useradd -m -s /bin/bash $USERNAME
+	        echo "$USERNAME created, home directory created and default shell set to /bin/bash"
+	    fi
+	    echo "Setting up password for $USERNAME"
+    	passwd $USERNAME
+	else 
+		echo "Not adding a new username"
+	fi
 fi
 
 clear
@@ -137,20 +112,10 @@ echo -ne "
 UNAME=$(uname | tr "[:upper:]" "[:lower:]")
 # If Linux, try to determine specific distribution
 if [ "$UNAME" == "linux" ]; then
-    if [[ $OS =~ (arch) ]]; then
-        pacman -Syy
-        pacman -Syu --noconfirm
-        pacman -S htop vim nano wget curl git ncdu zsh --noconfirm
-    elif [[ $OS =~ (debian|ubuntu) ]]; then
+    if [[ $OS =~ (debian|ubuntu) ]]; then
         apt update
         apt upgrade -y
-        apt install htop vim nano wget curl git ncdu zsh -y
-    elif [[ $OS =~ (centos|amzn|oracle) ]]; then
-        yum update -y
-        yum install htop vim nano wget curl git ncdu zsh -y
-    elif [[ $OS =~ (fedora) ]]; then
-        dnf update -y
-        dnf install htop vim nano wget curl git ncdu zsh -y
+        apt install htop vim nano wget curl git ncdu zsh nginx snapd -y
     else
         echo "Can't detect current distro!"
         exit 1
@@ -194,6 +159,120 @@ if [[ $OS =~ (debian|ubuntu) ]]; then
 	else
 		echo "Not installing Nala/Nala-Legacy."
 	fi
+fi
+
+clear
+
+echo -ne "
+-------------------------------------------------------------------------
+                   Installing docker and portainer
+-------------------------------------------------------------------------
+"
+## Necessary repo, packages and config
+
+if [[ $OS =~ (debian|ubuntu) ]]; then
+	echo "Would you like to install Docker and Portainer? (Nice front-end web gui for docker)"
+	echo "(Y/n)? "
+	read RESPONSE
+    if [[ $RESPONSE == [Yy]* ]]; then
+		echo "Downloading Docker setup script..."
+		curl -fsSL https://get.docker.com -o get-docker.sh
+		sh get-docker.sh
+		# Installing Portainer
+		read -p "Press enter to continue"
+		clear
+		echo "## Installing Portainer..."
+		docker volume create portainer_data
+		docker run -d -p 9443:9443 -p 8000:8000 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_stuff:/data portainer/portainer-ce:latest
+		# Installing Netdata
+		read -p "Press enter to continue"
+		clear
+		echo "## Installing Netdata..."
+		docker run -d --name=netdata -p 19999:19999 -v netdataconfig:/etc/netdata -v netdatalib:/var/lib/netdata -v netdatacache:/var/cache/netdata -v /etc/passwd:/host/etc/passwd:ro -v /etc/group:/host/etc/group:ro -v /proc:/host/proc:ro -v /sys:/host/sys:ro -v /etc/os-release:/host/etc/os-release:ro --restart unless-stopped --cap-add SYS_PTRACE --security-opt apparmor=unconfined netdata/netdata
+	else 
+		echo "Not installing Docker and Portainer"
+	fi
+fi
+
+clear
+
+echo -ne "
+-------------------------------------------------------------------------
+                   	Configuring Nginx's Web Servers
+-------------------------------------------------------------------------
+"
+
+echo "Would you like to configure and deploy the Nginx's Web Servers for"
+echo "Portainer, NetData"
+echo "(Y/n)? "
+read RESPONSE
+if [[ $RESPONSE == [Yy]* ]]; then
+	echo "## Creating the virtual host and deploying it"
+	# Creating the site
+	NGINX_AVAILABLE_VHOSTS='/etc/nginx/sites-available'
+
+	# Create nginx config file
+	cat > $NGINX_AVAILABLE_VHOSTS/net.lyzcoote.gay.conf <<EOF
+server 
+{
+    listen 80;
+    server_name net.lyzcoote.gay;
+    location / 
+    {
+		proxy_pass http://localhost:19999;
+	}
+}
+EOF
+
+	# Enabling the site
+	cp /etc/nginx/sites-available/net.lyzcoote.gay.conf /etc/nginx/sites-enabled/net.lyzcoote.gay.conf
+
+	# Restart
+	echo "Do you wish to restart nginx?"
+	echo "(Y/n)? "
+	read RESPONSE
+	if [[ $RESPONSE == [Yy]* ]]; then
+	    service nginx restart
+	else
+		echo "Not restating Nginx"
+	fi
+	read -p "Press enter to continue"
+	clear
+
+	# SSL for Netdata and Portainer
+	echo "Do you want to enable SSL to the services created previously?"
+	echo "(Y/n)? "
+	read RESPONSE
+	if [[ $RESPONSE == [Yy]* ]]; then
+		echo "## Installing Certbot for Nginx "
+		snap install core
+		snap refresh core
+		snap install --classic certbot
+		ln -s /snap/bin/certbot /usr/bin/certbot
+		echo "Please input the Certbot Wizard for enable SSL."
+		echo "If needed, re-run 'certbot --nginx' multiple times."
+		echo "## REMEMBER TO CHECK IF DNS RECORDS FOR 'netdata.' AND 'portainer.' MATCH THE IP OF THE VPS"
+		read -p "Press enter to continue"
+		clear
+		certbot --nginx
+		clear
+		echo "Netdata Site Created and deployed on: net.lyzcoote.gay"
+	else 
+		echo "Do you want to install certbot for Nginx?"
+		echo "(Y/n)? "
+		read RESPONSE
+		if [[ $RESPONSE == [Yy]* ]]; then
+			echo "## Installing Certbot for Nginx "
+			snap install core
+			snap refresh core
+			snap install --classic certbot
+			ln -s /snap/bin/certbot /usr/bin/certbot
+		else 
+			echo "Not installing Certbot"
+		fi
+	fi
+else 
+	echo "You may need to configure the Nginx's Virtual Hosts manually"	
 fi
 
 
